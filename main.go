@@ -41,7 +41,13 @@ func main() {
 
 	// Middleware
 	app.Use(logger.New())
-	app.Use(cors.New())
+	app.Use(cors.New(
+		cors.Config{
+			AllowOrigins: "*",
+			AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+			AllowMethods: "GET, POST, PUT, DELETE",
+		},
+	))
 
 	// Set up routes
 	routes.SetupRoutes(app)
