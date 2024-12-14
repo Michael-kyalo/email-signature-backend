@@ -16,8 +16,8 @@ COPY . .
 # Build the application binary
 RUN go build -o main .
 
-# Final stage: Minimal image
-FROM debian:bullseye-slim
+# Final stage: Updated base image with newer glibc
+FROM ubuntu:22.04
 
 # Set up working directory
 WORKDIR /app
