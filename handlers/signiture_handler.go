@@ -10,8 +10,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type SignatureResponse struct {
+	ID           string                 `json:"id"`
+	UserID       string                 `json:"user_id"`
+	TemplateData map[string]interface{} `json:"template_data"`
+	CreatedAt    string                 `json:"created_at"`
+}
 type SignatureRequest struct {
 	TemplateData map[string]interface{} `json:"template_data"`
+}
+type SignaturesListResponse struct {
+	Signatures []SignatureResponse `json:"signatures"`
+}
+
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
 }
 
 // CreateSignature godoc
@@ -274,4 +291,100 @@ func renderHTML(data map[string]interface{}) string {
             </table>
         </div>
     `, name, jobTitle, company, phone, phone, website, website, linkedin, twitter)
+}
+
+// GetAllSignatures godoc
+// @Summary Get all signatures
+// @Description Retrieve all signatures for the authenticated user.
+// @Tags Signatures
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} SignaturesListResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /signatures [get]
+func GetAllSignatures(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+
+	rows, err := database.DB.Query(
+		context.Background(),
+		"SELECT id, user_id, template_data, created_at FROM signatures WHERE user_id = $1",
+		userID,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to fetch signatures"})
+	}
+	defer rows.Close()
+
+	var signatures []SignatureResponse
+	for rows.Next() {
+		var signature SignatureResponse
+		if err := rows.Scan(&signature.ID, &signature.UserID, &signature.TemplateData, &signature.CreatedAt); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to parse signatures"})
+		}
+		signatures = append(signatures, signature)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(SignaturesListResponse{Signatures: signatures})
+}
+
+// DeleteSignature godoc
+// @Summary Delete a signature
+// @Description Delete a specific signature by its ID. The user must own the signature.
+// @Tags Signatures
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Signature ID"
+// @Success 200 {object} MessageResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /signature/{id} [delete]
+func DeleteSignature(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+	signatureID := c.Params("id")
+
+	result, err := database.DB.Exec(
+		context.Background(),
+		"DELETE FROM signatures WHERE id = $1 AND user_id = $2",
+		signatureID,
+		userID,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to delete signature"})
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "Signature not found or unauthorized to delete"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(MessageResponse{Message: "Signature deleted successfully"})
+}
+
+// CountSignatures godoc
+// @Summary Get total signatures
+// @Description Retrieve the total number of signatures for the authenticated user.
+// @Tags Signatures
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} CountResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /signatures/count [get]
+func CountSignatures(c *fiber.Ctx) error {
+	// Get user_id from context
+	userID := c.Locals("user_id").(string)
+
+	// Query to count signatures for the user
+	var count int
+	err := database.DB.QueryRow(context.Background(), "SELECT COUNT(*) FROM signatures WHERE user_id = $1", userID).Scan(&count)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to count signatures"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"count": count})
 }

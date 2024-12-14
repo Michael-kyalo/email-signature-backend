@@ -15,6 +15,16 @@ definitions:
       link_id:
         type: string
     type: object
+  handlers.CountResponse:
+    properties:
+      count:
+        type: integer
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
   handlers.LinkRequest:
     properties:
       signature_id:
@@ -27,6 +37,11 @@ definitions:
       email:
         type: string
       password:
+        type: string
+    type: object
+  handlers.MessageResponse:
+    properties:
+      message:
         type: string
     type: object
   handlers.RegisterRequest:
@@ -42,6 +57,25 @@ definitions:
         additionalProperties: true
         type: object
     type: object
+  handlers.SignatureResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      template_data:
+        additionalProperties: true
+        type: object
+      user_id:
+        type: string
+    type: object
+  handlers.SignaturesListResponse:
+    properties:
+      signatures:
+        items:
+          $ref: '#/definitions/handlers.SignatureResponse'
+        type: array
+    type: object
 host: email-signature-backend.onrender.com
 info:
   contact: {}
@@ -49,6 +83,31 @@ info:
   title: Email Signature Generator API
   version: "1.0"
 paths:
+  /analytics/count:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the total number of analytics entries (clicks).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CountResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get total analytics entries
+      tags:
+      - Analytics
   /api/analytics:
     get:
       description: Fetches the total clicks and last clicked timestamps for all links
@@ -329,6 +388,116 @@ paths:
       summary: Track a click event
       tags:
       - Clicks
+  /links/count:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the total number of links for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CountResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get total links
+      tags:
+      - Links
+  /signature/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific signature by its ID. The user must own the signature.
+      parameters:
+      - description: Signature ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a signature
+      tags:
+      - Signatures
+  /signatures:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all signatures for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SignaturesListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all signatures
+      tags:
+      - Signatures
+  /signatures/count:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the total number of signatures for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CountResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get total signatures
+      tags:
+      - Signatures
 schemes:
 - https
 securityDefinitions:

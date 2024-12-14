@@ -75,3 +75,32 @@ func CreateLink(c *fiber.Ctx) error {
 		"link_id": linkID,
 	})
 }
+
+// CountLinks godoc
+// @Summary Get total links
+// @Description Retrieve the total number of links for the authenticated user.
+// @Tags Links
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} CountResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /links/count [get]
+func CountLinks(c *fiber.Ctx) error {
+	// Get user_id from context
+	userID := c.Locals("user_id").(string)
+
+	// Query to count links for the user's signatures
+	var count int
+	err := database.DB.QueryRow(context.Background(), `
+		SELECT COUNT(*) 
+		FROM links 
+		WHERE signature_id IN (SELECT id FROM signatures WHERE user_id = $1)
+	`, userID).Scan(&count)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to count links"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"count": count})
+}
