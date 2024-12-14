@@ -22,6 +22,7 @@ import (
 // @description API for managing email signatures with analytics
 // @host email-signature-backend.onrender.com
 // @BasePath
+// @schemes https
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
