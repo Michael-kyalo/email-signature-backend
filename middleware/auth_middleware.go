@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"os"
+	"strings"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
-	"strings"
 )
 
 func Authenticate(c *fiber.Ctx) error {
@@ -17,7 +19,8 @@ func Authenticate(c *fiber.Ctx) error {
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 	// Validate the token
-	secret := "supersecretkey" // Use environment variable in production
+	secret := os.Getenv("JWT_SECRET")
+	// Use environment variable in production
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fiber.ErrUnauthorized
