@@ -48,6 +48,9 @@ func main() {
 			AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
 		},
 	))
+	app.Options("/*", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 
 	// Set up routes
 	routes.SetupRoutes(app)
