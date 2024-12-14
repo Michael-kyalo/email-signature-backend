@@ -20,7 +20,7 @@ import (
 // @title Email Signature Generator API
 // @version 1.0
 // @description API for managing email signatures with analytics
-// @host localhost:3000
+// @host email-signature-backend.onrender.com
 // @BasePath
 // @securityDefinitions.apikey BearerAuth
 // @in header
