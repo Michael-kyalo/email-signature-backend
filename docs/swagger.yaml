@@ -1,0 +1,337 @@
+definitions:
+  handlers.AnalyticsResponse:
+    properties:
+      last_clicked:
+        type: string
+      link_id:
+        type: string
+      total_clicks:
+        type: integer
+    type: object
+  handlers.ClickRequest:
+    properties:
+      ip_address:
+        type: string
+      link_id:
+        type: string
+    type: object
+  handlers.LinkRequest:
+    properties:
+      signature_id:
+        type: string
+      url:
+        type: string
+    type: object
+  handlers.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.SignatureRequest:
+    properties:
+      template_data:
+        additionalProperties: true
+        type: object
+    type: object
+host: localhost:3000
+info:
+  contact: {}
+  description: API for managing email signatures with analytics
+  title: Email Signature Generator API
+  version: "1.0"
+paths:
+  /api/analytics:
+    get:
+      description: Fetches the total clicks and last clicked timestamps for all links
+        belonging to the user's signatures
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/handlers.AnalyticsResponse'
+              type: array
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Retrieve analytics for user links
+      tags:
+      - Analytics
+  /api/links:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new link to an existing signature, ensuring the signature
+        belongs to the authenticated user
+      parameters:
+      - description: Link creation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LinkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Link created successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized to add links to this signature
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create link
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new link for a signature
+      tags:
+      - Links
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns a JWT token
+      parameters:
+      - description: User login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to generate token
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Authenticate a user
+      tags:
+      - Authentication
+  /api/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account with a hashed password
+      parameters:
+      - description: User registration payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to register user
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - Authentication
+  /api/signature:
+    post:
+      consumes:
+      - application/json
+      description: Allows an authenticated user to create a new email signature
+      parameters:
+      - description: Signature creation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SignatureRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Signature created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create signature
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new email signature
+      tags:
+      - Signatures
+  /api/signature/{id}/export:
+    get:
+      description: Generates an HTML version of the specified signature for email
+        clients
+      parameters:
+      - description: Signature ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Template type (basic or modern)
+        in: query
+        name: template
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML representation of the signature
+          schema:
+            type: string
+        "404":
+          description: Signature not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to generate HTML
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Export an email signature as HTML
+      tags:
+      - Signatures
+  /api/signature/{id}/preview:
+    get:
+      description: Renders the signature in an HTML page for browser preview
+      parameters:
+      - description: Signature ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Template type (basic or modern)
+        in: query
+        name: template
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML preview of the signature
+          schema:
+            type: string
+        "404":
+          description: Signature not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to generate preview
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Preview an email signature
+      tags:
+      - Signatures
+  /api/track:
+    post:
+      consumes:
+      - application/json
+      description: Logs a click event for a specific link, including the user's IP
+        address
+      parameters:
+      - description: Click tracking payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ClickRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Click tracked successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track click
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Track a click event
+      tags:
+      - Clicks
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
