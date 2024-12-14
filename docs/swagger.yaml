@@ -42,7 +42,7 @@ definitions:
         additionalProperties: true
         type: object
     type: object
-host: localhost:3000
+host: email-signature-backend.onrender.com
 info:
   contact: {}
   description: API for managing email signatures with analytics
@@ -329,6 +329,8 @@ paths:
       summary: Track a click event
       tags:
       - Clicks
+schemes:
+- https
 securityDefinitions:
   BearerAuth:
     in: header
