@@ -20,7 +20,12 @@ func Authenticate(c *fiber.Ctx) error {
 
 	// Validate the token
 	secret := os.Getenv("JWT_SECRET")
-	// Use environment variable in production
+	if secret == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Server misconfiguration: JWT_SECRET is missing",
+		})
+	}
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fiber.ErrUnauthorized
@@ -43,9 +48,9 @@ func Authenticate(c *fiber.Ctx) error {
 	}
 
 	userID, ok := claims["user_id"].(string)
-	if !ok {
+	if !ok || userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid user ID in token",
+			"error": "Invalid or missing user ID in token",
 		})
 	}
 

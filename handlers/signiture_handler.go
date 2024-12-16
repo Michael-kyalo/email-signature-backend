@@ -5,6 +5,7 @@ import (
 	"email-signature-backend/database"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ type SignatureResponse struct {
 	ID           string                 `json:"id"`
 	UserID       string                 `json:"user_id"`
 	TemplateData map[string]interface{} `json:"template_data"`
-	CreatedAt    string                 `json:"created_at"`
+	CreatedAt    time.Time              `json:"created_at"`
 }
 type SignatureRequest struct {
 	TemplateData map[string]interface{} `json:"template_data"`
@@ -313,6 +314,7 @@ func GetAllSignatures(c *fiber.Ctx) error {
 		userID,
 	)
 	if err != nil {
+		log.Printf("Error getting user signature from database: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to fetch signatures"})
 	}
 	defer rows.Close()
@@ -321,6 +323,7 @@ func GetAllSignatures(c *fiber.Ctx) error {
 	for rows.Next() {
 		var signature SignatureResponse
 		if err := rows.Scan(&signature.ID, &signature.UserID, &signature.TemplateData, &signature.CreatedAt); err != nil {
+			log.Printf("Error parsing signature response: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to parse signatures"})
 		}
 		signatures = append(signatures, signature)
@@ -343,25 +346,70 @@ func GetAllSignatures(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /signature/{id} [delete]
 func DeleteSignature(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	// Get the signature ID from the URL
 	signatureID := c.Params("id")
 
-	result, err := database.DB.Exec(
+	// Get the user ID from the request context
+	userID := c.Locals("user_id").(string)
+
+	// Begin a database transaction
+	tx, err := database.DB.Begin(context.Background())
+	if err != nil {
+		log.Printf("Failed to start transaction: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete signature",
+		})
+	}
+
+	// Delete links associated with the signature
+	_, err = tx.Exec(
+		context.Background(),
+		"DELETE FROM links WHERE signature_id = $1",
+		signatureID,
+	)
+	if err != nil {
+		tx.Rollback(context.Background())
+		log.Printf("Failed to delete links: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete associated links",
+		})
+	}
+
+	// Delete the signature
+	result, err := tx.Exec(
 		context.Background(),
 		"DELETE FROM signatures WHERE id = $1 AND user_id = $2",
 		signatureID,
 		userID,
 	)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to delete signature"})
+		tx.Rollback(context.Background())
+		log.Printf("Failed to delete signature: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete signature",
+		})
 	}
 
+	// Ensure a row was actually deleted
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "Signature not found or unauthorized to delete"})
+		tx.Rollback(context.Background())
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Signature not found or unauthorized",
+		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(MessageResponse{Message: "Signature deleted successfully"})
+	// Commit the transaction
+	if err := tx.Commit(context.Background()); err != nil {
+		log.Printf("Failed to commit transaction: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to finalize deletion",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Signature and associated links deleted successfully",
+	})
 }
 
 // CountSignatures godoc

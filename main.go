@@ -56,7 +56,7 @@ func main() {
 	routes.SetupRoutes(app)
 
 	// Start the server
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(app.Listen(os.Getenv("PORT")))
 }
 func RunMigrations() {
 	databaseURL := os.Getenv("DATABASE_URL")
